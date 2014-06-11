@@ -3,128 +3,144 @@
 // This file contains helper functions for a variety of purposes, as
 // well as the functions that handle script installation and menu setup.
 
-// rowCache
-rc = null; 
+// TODO_AJR - Create a Utils object for all these not called by Google.
 
- // onInstall: 
- // Gets called when script is first installed.
- // Sets up menu (really just calls onOpen() ).
- function onInstall()
- {
-   onOpen();
-   
-   showNewVersionNotice();
- }  
-   
- // onOpen:
- // Gets called when the spreadsheet is opened.
- // Sets up the menu and shows a notification.
- function onOpen()
- {
-   var ss = SpreadsheetApp.getActiveSpreadsheet();
-   
-   createFlubarooMenu(ss);
-   
-   // Rename "Sheet1" something more friendly to enhance useability.
-   var status = renameSubmissionsSheet();
- }
+// TODO_AJR - Lots of potentially private functions in here.
 
-// justUpgradedThisSheet:
-// Returns true if this is the first time user has upgraded to or installed
-// a new version of Flubaroo in this spreadsheet.
-function justUpgradedThisSheet()
+// Event Handlers
+// ==============
+
+// onInstall: 
+// Gets called when script is first installed.
+// Sets up menu (really just calls onOpen() ).
+function onInstall()
 {
-  // Let the user know if this is a new version.
-  var sver = ScriptProperties.getProperty(SCRIPT_PROP_SHEET_INSTALLED_VERSION);
+  onOpen();  
+  showNewVersionNotice();
+}  
+
+// onOpen:
+// Gets called when the spreadsheet is opened.
+// Sets up the menu and shows a notification.
+function onOpen()
+{
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // new version doesn't get set in properties until assignment
-  // is first graded after upgrading.
-  if ((sver == null) || (sver != gbl_version_str))
-    {
-      return true;
-    }
+  createFlubarooMenu(ss);
   
-  return false;
+  // Rename "Sheet1" something more friendly to enhance useability.
+  var status = renameSubmissionsSheet();
 }
 
-// justUpgradedFirstTime:
-// Returns true if this is the first time the user has upgrade to or installed a new
-// version of Flubaroo.
-function justUpgradedFirstTime()
-{
-  var uver = UserProperties.getProperty(USER_PROP_LATEST_VERSION_INSTALLED);
-  
-  // new version doesn't get set in properties until assignment
-  // is first graded after upgrading.
-  if ((uver == null) || (uver != gbl_version_str))
-    {
-      return true;
-    }
-  
-  return false;
-}
+// Flubaroo Menu
+// =============
 
- function createFlubarooMenu(ss)
- {
-   var grades_present = false;
- 
-   if (getSheetWithGrades(ss) != null)
-     {
-       grades_present = true;
-     }
-    
-   var menuEntries = [];
- 
-   // Only show "Re-grade, Email Grade, View Report, etc, if (a) Grades sheet is present and
-   // (b) user didn't just upgrade to a new version of Flubaroo in this sheet. If they just upgraded,
-   // assignment must be re-graded first, incase format of Grades sheet is different in new version.
-   if (grades_present && !justUpgradedThisSheet())
-     {
-       menuEntries.push({name: langstr("FLB_STR_MENU_REGRADE_ASSIGNMENT"), functionName: "gradeStep1"});
-       menuEntries.push({name: langstr("FLB_STR_MENU_EMAIL_GRADES"), functionName: "emailGrades"});
-       
-       menuEntries.push({name: langstr("FLB_STR_MENU_VIEW_REPORT"), functionName: "viewReport"});
+function createFlubarooMenu(ss)
+{
+  var menuEntries = [];
              
-       menuEntries.push(null); // line break
-       
-       if (helpTipsHidden())
-         {
-           menuEntries.push({name: langstr("FLB_STR_MENU_EDIT_HELP_TIPS"), functionName: "toggleHelpTips"});
-         }
-       else
-         {
-           menuEntries.push({name: langstr("FLB_STR_MENU_HIDE_HELP_TIPS"), functionName: "toggleHelpTips"});
-         }
- 
-       var col_hidden = ScriptProperties.getProperty(SCRIPT_PROP_STUDENT_FEEDBACK_HIDDEN);
-       if (col_hidden == "true")
-         {
-           menuEntries.push({name: langstr("FLB_STR_MENU_EDIT_FEEDBACK"), functionName: "toggleFeedback"});
-         }
-       else
-         {
-           menuEntries.push({name: langstr("FLB_STR_MENU_HIDE_FEEDBACK"), functionName: "toggleFeedback"});
-         }
-     }
-   else
-     {
-       menuEntries.push({name: langstr("FLB_STR_MENU_GRADE_ASSIGNMENT"), functionName: "gradeStep1"});
-     }
+  dumpConfig();
+  
+  if (Autograde.isOn())
+    {
+      // Don't allow the usual options. Just the ability to turn this off.
+      menuEntries.push({name: langstr("FLB_STR_MENU_DISABLE_AUTO_GRADE"), functionName: "toggleAutograde"});
+      
+      debugMenu(menuEntries);
+      
+      ss.addMenu(gbl_menu_name, menuEntries);   
+      
+      return;
+    }
    
-   menuEntries.push(null); // line break
-   menuEntries.push({name: langstr("FLB_STR_MENU_SET_LANGUAGE"), functionName: "setLanguage"});
-   menuEntries.push({name: langstr("FLB_STR_MENU_ABOUT"), functionName: "aboutFlubaroo"});  
-     
-   ss.addMenu(gbl_menu_name, menuEntries);   
- }
+  // Only show "Re-grade, Email Grade, View Report, etc, if (a) Grades sheet is present and
+  // (b) user didn't just upgrade to a new version of Flubaroo in this sheet. If they just upgraded,
+  // assignment must be re-graded first, incase format of Grades sheet is different in new version.
+  else if (gotSheetWithGrades(ss) && !justUpgradedThisSheet())
+    {
+      // TODO_AJR - Reenable re-grading (presently duplicates grades sheet).
+      // menuEntries.push({name: langstr("FLB_STR_MENU_REGRADE_ASSIGNMENT"), functionName: "menuGradeStep1"});
+      
+      menuEntries.push({name: langstr("FLB_STR_MENU_EMAIL_GRADES"), functionName: "menuEmailGrades"});
+       
+      // TODO_AJR - Reenable report, help tips and student feedback.
+      
+      /*
+      menuEntries.push({name: langstr("FLB_STR_MENU_VIEW_REPORT"), functionName: "viewReport"});
+            
+      menuEntries.push(null); // line break
 
+      if (helpTipsHidden())
+        {
+          menuEntries.push({name: langstr("FLB_STR_MENU_EDIT_HELP_TIPS"), functionName: "toggleHelpTips"});
+        }
+      else
+        {
+          menuEntries.push({name: langstr("FLB_STR_MENU_HIDE_HELP_TIPS"), functionName: "toggleHelpTips"});
+        }
 
- // createPleaseWaitUI:
- // Creates a simple UI instructing the teacher to wait while their
- // assignment is being graded. This UI will be replaced once grading
- // completes.
- function aboutFlubaroo()
- {  
+      var col_hidden = ScriptProperties.getProperty(SCRIPT_PROP_STUDENT_FEEDBACK_HIDDEN);
+      
+      if (col_hidden == "true")
+        {
+          menuEntries.push({name: langstr("FLB_STR_MENU_EDIT_FEEDBACK"), functionName: "toggleFeedback"});
+        }
+      else
+        {
+          menuEntries.push({name: langstr("FLB_STR_MENU_HIDE_FEEDBACK"), functionName: "toggleFeedback"});
+        }
+      */
+
+    }
+  else
+    {
+      menuEntries.push({name: langstr("FLB_STR_MENU_GRADE_ASSIGNMENT"), functionName: "gradeStep1"});
+    }
+   
+  menuEntries.push(null); // line break
+  menuEntries.push({name: langstr("FLB_STR_MENU_ENABLE_AUTO_GRADE"), functionName: "toggleAutograde"});
+  menuEntries.push(null); // line break
+
+  // TODO_AJR - Reenable language selection
+  // menuEntries.push({name: langstr("FLB_STR_MENU_SET_LANGUAGE"), functionName: "setLanguage"});
+  
+  menuEntries.push({name: langstr("FLB_STR_MENU_ABOUT"), functionName: "aboutFlubaroo"});  
+  
+  debugMenu(menuEntries);
+  
+  ss.addMenu(gbl_menu_name, menuEntries);
+  
+  return;
+}
+
+// skipUIMenu()
+// ------------
+
+function skipUIMenu()
+{
+  UI.off();
+  
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  createFlubarooMenu(ss);
+  
+} // skipUIMenu()
+
+// displayUIMenu()
+// ---------------
+
+function displayUIMenu()
+{
+  UI.on();
+  
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  createFlubarooMenu(ss);
+  
+} // displayUIMenu()
+
+// TODO_AJR - Move to ui.gas
+
+function aboutFlubaroo()
+{  
    var ss = SpreadsheetApp.getActiveSpreadsheet();
    var app = UiApp.createApplication()
                       .setTitle(langstr("FLB_STR_MENU_ABOUT"))
@@ -171,14 +187,14 @@ function justUpgradedFirstTime()
    ss.show(app);
    
    logAboutFlubaroo();
- }
+}
  
 function toggleFeedback()
 {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var grades_sheet = getSheetWithGrades(ss);
   
-  var num_stud_identifiers = ScriptProperties.getProperty(SCRIPT_PROP_NUM_STUDENT_IDENTIFIERS);
+  var num_stud_identifiers = Number(ScriptProperties.getProperty(SCRIPT_PROP_NUM_STUDENT_IDENTIFIERS));
   
   var metric_start_col = 2 + parseInt(num_stud_identifiers);
   var feedback_col_num =  metric_start_col + METRIC_STUDENT_FEEDBACK;
@@ -188,24 +204,27 @@ function toggleFeedback()
     {
       ss.setActiveSheet(grades_sheet);
       grades_sheet.showColumns(feedback_col_num);
-      var range = grades_sheet.getRange(gbl_grades_start_row_num +1, feedback_col_num);
+      var range = grades_sheet.getRange(gbl_grades_start_row_num + 1, feedback_col_num);
       grades_sheet.setActiveSelection(range);
       ScriptProperties.setProperty(SCRIPT_PROP_STUDENT_FEEDBACK_HIDDEN, "false");
     }
   else
     {
-      grades_sheet.hideColumns(feedback_col_num);
-      ScriptProperties.setProperty(SCRIPT_PROP_STUDENT_FEEDBACK_HIDDEN, "true");
+      if (!Debug.debugOn)
+        {
+          grades_sheet.hideColumns(feedback_col_num);
+          ScriptProperties.setProperty(SCRIPT_PROP_STUDENT_FEEDBACK_HIDDEN, "true");
+        }
     }
   
   createFlubarooMenu(ss);
 }
 
-
 function helpTipsHidden()
 {
   var ht_hidden = ScriptProperties.getProperty(SCRIPT_PROP_HELP_TIPS_HIDDEN);
-  if (ht_hidden == null)
+  
+  if (ht_hidden === null)
     {
       // handle first case when not set yet.
       ht_hidden = "true";
@@ -225,10 +244,9 @@ function toggleHelpTips()
 {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var subm_sheet = getSheetWithSubmissions(ss);
-  
-  var num_stud_identifiers = ScriptProperties.getProperty(SCRIPT_PROP_NUM_STUDENT_IDENTIFIERS);
-  
+  var num_stud_identifiers = Number(ScriptProperties.getProperty(SCRIPT_PROP_NUM_STUDENT_IDENTIFIERS));
   var tips_present = false;
+  
   if (getTipsRow(subm_sheet) != null)
     {
       tips_present = true;
@@ -259,183 +277,15 @@ function toggleHelpTips()
         {
           subm_sheet.hideRows(2);
         }
+      
       ScriptProperties.setProperty(SCRIPT_PROP_HELP_TIPS_HIDDEN, "true");
     }
   
   createFlubarooMenu(ss);
 }
 
-
-// strTrim:
-// Trims the whitespace before and after the string.
-// Necessary b/c sometimes cells from Form submissions have extra whitespace
-// at the beginning for some reason, leading to "wrong" answers when graded.
-function strTrim(str) {
-  return str.replace(/^\s+|\s+$/g,"");
-}
-
- // setCellValue:
- // Given a reference to a sheet, and a row and column number (starts  
- // from 1), writes the value given into the cell specified by the row
- // and column.
- function setCellValue(sheet, row, col, value)
- {
-   single_cell = sheet.getRange(row, col, 1, 1);
-   single_cell.setValue(value);
- }
- 
- // getCellValue
- // Given a reference to a sheet, and a row and column number (starts
- // from 1), returns the value given in the cell specified by the row
- // and column.
- function getCellValue(sheet, row, col)
- {
-   var single_cell = sheet.getRange(row, col, 1, 1);
-   return single_cell.getValue();
- }
- 
- // setCellColor
- // Given a reference to a sheet, and a row and column number (starts  
- // from 1), changes the background color (to the value specified)
- // for the cell in the row and col given.
- function setCellColor(sheet, row, col, color)
- {
-   single_cell = sheet.getRange(row, col, 1, 1);
-   single_cell.setBackgroundColor(color);
- }
-   
-function singleRowToArray(sheet, row_num, num_cols)
- {
-   if (rc == null)
-     {
-       rc = new rowCache(SpreadsheetApp.getActiveSpreadsheet());
-     }
-   
-   if (num_cols == -1)
-     {
-       num_cols = sheet.getLastColumn();
-     }
- 
-   return rc.getRow(sheet, row_num, num_cols);
- }
-
-// writeArrayToRow:
-// Given an array of values, writes it out to the row of the sheet specified.
-// Row ids start from 1. Note that this will override any pre-existing content
-// in the affected cells of that row.
-// The row need not exist ahead of time.
-function writeArrayToRow(sheet, row_num, start_col, row_values, bold, color)
-{
-   var row_range = sheet.getRange(row_num, 1, start_col, row_values.length);
-   var set_of_rows = new Array(1);
-   set_of_rows[0] = row_values;
-  
-   if (bold)
-     {
-       row_range.setFontWeight("bold");
-     }
-   if (color)
-     {
-       row_range.setBackgroundColor(color);
-     }
-  
-    row_range.setValues(set_of_rows);
-}
-
-
- // floatToPrettyText:
- // Takes a float like 22.123456789 and returns "22.12".
- // Note: this function will return 2 digits past the decimal, but will
- // do so without rounding.
- function floatToPrettyText(f)
- {
-   s1 = f + ""; // float to string
-   sp = s1.split("."); // split at decimal
- 
-   s2 = sp[0] + ".";
-   if (sp.length > 1)
-     {
-       s2 = s2 + sp[1].substring(0,2);
-     }
-   else
-     {
-       s2 = s2 + "00";
-     }
- 
-   return s2;
- }
- 
- // renameSubmissionsSheet:
- // Rename "Sheet1" to something more friendly to enhance useability. When
- // looking for the submissions in the future, we'll refer to the spreadsheet
- // with this name.
- // TODO: Make sure this doesn't prevent future submissions
- // Returns:
- //    STATUS_OK if rename successful.
- //    STATUS_NOT_FOUND if 'Sheet1' sheet not present.
- //    STATUS_NO_EFFECT if 'Sheet1' had previously been renamed, and so another
- //      rename wasn't done.
- function renameSubmissionsSheet()
- {
-   var ss = SpreadsheetApp.getActiveSpreadsheet();
-   var sheet = ss.getSheetByName(langstr("FLB_STR_SHEETNAME_STUD_SUBM"));
-   if (sheet)
-     {
-       // sheet has already been renamed.
-       return STATUS_NO_EFFECT;
-     }
-   
-   // for non-english languages, try with the older style name.
-   // might still be laying around.
-   var sheet = ss.getSheetByName(gbl_subm_sheet_name);
-   if (sheet)
-     {
-       // sheet has already been renamed.
-       return STATUS_NO_EFFECT;
-     }
-   
-   var all_sheets = ss.getSheets();
-   if (all_sheets.length == 1)
-     {
-       // Only 1 sheet. Assume it has the student submissions, and
-       // rename it to something more friendly (and which we can refer
-       // to later).
-       sheet = all_sheets[0];
-       sheet.setName(langstr("FLB_STR_SHEETNAME_STUD_SUBM"));
-       return STATUS_OK;
-     }
-   else if (all_sheets.length > 1)
-     {
-       // More than one sheet. If can find "Sheet1", assume this one has
-       // the submissions and rename it.
-       sheet = ss.getSheetByName("Sheet1");
-       if (sheet != null)
-         {
-           // Rename "Sheet1" to something more friendly.
-           sheet.setName(langstr("FLB_STR_SHEETNAME_STUD_SUBM"));
-           return STATUS_OK;
-         }
-     }
-   
-   // Can't locate sheet with submissions. Tell the user.
-   return STATUS_NOT_FOUND;
- }
-
-// getTipsRow:
-function getTipsRow(subm_sheet)
-{
-  var help_tips_vals = singleRowToArray(subm_sheet,
-                                        2,
-                                        getNumQuestionsFromSubmissions(subm_sheet));
-
-  if (help_tips_vals[0] != "")
-    {
-      return null;
-    }
-  
-  return help_tips_vals;
-}
-
+// Google Analytics Logging
+// ========================
 
 function createGATrackingUrl(encoded_page_name)
 {
@@ -641,6 +491,281 @@ function setFlubarooUid()
     }
 }
 
+// Spreadsheet Access
+// ==================
+
+ // setCellValue:
+ // Given a reference to a sheet, and a row and column number (starts  
+ // from 1), writes the value given into the cell specified by the row
+ // and column.
+ function setCellValue(sheet, row, col, value)
+ {
+   var single_cell = sheet.getRange(row, col, 1, 1);
+   single_cell.setValue(value);
+ }
+ 
+ // getCellValue
+ // Given a reference to a sheet, and a row and column number (starts
+ // from 1), returns the value given in the cell specified by the row
+ // and column.
+ function getCellValue(sheet, row, col)
+ {
+   var single_cell = sheet.getRange(row, col, 1, 1);
+   return single_cell.getValue();
+ }
+ 
+ // setCellColor
+ // Given a reference to a sheet, and a row and column number (starts  
+ // from 1), changes the background color (to the value specified)
+ // for the cell in the row and col given.
+ function setCellColor(sheet, row, col, color)
+ {
+   var single_cell = sheet.getRange(row, col, 1, 1);
+   single_cell.setBackgroundColor(color);
+ }
+
+// In the past these reads have been cached but that caused problems 
+// with autograding and testing didn't measure any difference in
+// time taken.
+function singleRowToArray(sheet, row_num, num_cols)
+{
+  var result = [];
+
+  if (num_cols === -1) 
+    {
+      // Get all of the columns.
+      num_cols = sheet.getLastColumn();
+    }
+
+  // Read in the values for this row.
+  result = sheet.getRange(row_num, 1, 1, num_cols).getValues()[0];
+  
+  return result; 
+}
+
+// writeArrayToRow:
+// Given an array of values, writes it out to the row of the sheet specified.
+// Row ids start from 1. Note that this will override any pre-existing content
+// in the affected cells of that row.
+// The row need not exist ahead of time.
+function writeArrayToRow(sheet, row_num, start_col, row_values, bold, color)
+{
+   var row_range = sheet.getRange(row_num, 1, start_col, row_values.length);
+   var set_of_rows = new Array(1);
+   var result;
+   
+   set_of_rows[0] = row_values;
+  
+   if (bold)
+     {
+       row_range.setFontWeight("bold");
+     }
+  
+   if (color)
+     {
+       row_range.setBackgroundColor(color);
+     }
+  
+   result = row_range.setValues(set_of_rows);
+    
+   Debug.assert(result !== null, "writeArrayToRow() - Failed to write values");
+}
+
+// Misc
+// ====
+
+// setNotification()
+// -----------------
+
+setNotification = function(ss, title, msg)
+{
+  // TODO_AJR - Internationalize.
+  
+  // TODO_DA - Doesn't always work ...
+  ss.toast(msg, title, 300);
+  
+} // setNotification()
+  
+// deleteTrigger()
+// ---------------
+
+deleteTrigger = function(trigger_id)
+{
+  // Locate a trigger by unique ID.
+  var all_triggers = ScriptApp.getProjectTriggers();
+  var i;
+  var found_trigger = false;
+  
+  // Loop over all triggers.
+  for (i = 0; i < all_triggers.length; i++) 
+    {
+      if (all_triggers[i].getUniqueId() === trigger_id) 
+        {
+          // Found the trigger so delete it.
+        ScriptApp.deleteTrigger(all_triggers[i]);
+        found_trigger = true;
+        break;
+        }
+    }
+  
+  Debug.assert(found_trigger, 
+               "deleteTrigger() - tried to delete a non-existant trigger.");  
+  
+} // deleteTrigger()
+  
+// createPdfCertificate()
+// ----------------------
+//
+// The code is based on the "Bus Conduct Report" script by 
+// TJ Houston tjhouston.com (tj@tjhouston.com).
+
+// TODO_AJR - Make sending a certificate configurable. At the moment you can
+// disable the feature by not defining the template ID and name.
+
+function createPdfCertificate(keys)
+{
+  Debug.info("createPdfCertificate()");
+
+  if (DOC_TEMPLATE === "" || DOC_NAME === "")
+    {
+      Debug.info("createPdfCertificate() - No certificate available");
+      return null;
+    }
+
+  // Get document template, copy it as a new temp doc, and save 
+  // the Doc’s id.
+  var copy_id = DocsList.getFileById(DOC_TEMPLATE)
+                        .makeCopy(DOC_NAME + ' for ' + keys["<NAME>"])
+                        .getId();
+  
+  // Open the temporary document.
+  var copy_doc = DocumentApp.openById(copy_id);
+  
+  // Get the document’s body section.
+  var copy_body = copy_doc.getActiveSection();
+  
+  // Replace place holder keys,in our google doc template.
+  for (var key in keys)
+    {
+      copy_body.replaceText(key, keys[key]);
+    }
+  
+  // Save and close the temporary document.
+  copy_doc.saveAndClose();
+  
+  // Convert temporary document to PDF by using the getAs blob conversion.
+  var pdf = DocsList.getFileById(copy_id).getAs("application/pdf"); 
+  
+  // Delete temp file.
+  DocsList.getFileById(copy_id).setTrashed(true);
+
+  return pdf;
+  
+} // createPdfCertificate()
+
+// strTrim:
+// Trims the whitespace before and after the string.
+// Necessary b/c sometimes cells from Form submissions have extra whitespace
+// at the beginning for some reason, leading to "wrong" answers when graded.
+function strTrim(str) 
+{
+  return str.replace(/^\s+|\s+$/g,"");
+}
+
+ // floatToPrettyText:
+ // Takes a float like 22.123456789 and returns "22.12".
+ // Note: this function will return 2 digits past the decimal, but will
+ // do so without rounding.
+ function floatToPrettyText(f)
+ {
+   s1 = f + ""; // float to string
+   sp = s1.split("."); // split at decimal
+ 
+   s2 = sp[0] + ".";
+   if (sp.length > 1)
+     {
+       s2 = s2 + sp[1].substring(0,2);
+     }
+   else
+     {
+       s2 = s2 + "00";
+     }
+ 
+   return s2;
+ }
+ 
+ // renameSubmissionsSheet:
+ // Rename "Sheet1" to something more friendly to enhance useability. When
+ // looking for the submissions in the future, we'll refer to the spreadsheet
+ // with this name.
+ // TODO: Make sure this doesn't prevent future submissions
+ // Returns:
+ //    STATUS_OK if rename successful.
+ //    STATUS_NOT_FOUND if 'Sheet1' sheet not present.
+ //    STATUS_NO_EFFECT if 'Sheet1' had previously been renamed, and so another
+ //      rename wasn't done.
+ function renameSubmissionsSheet()
+ {
+   var ss = SpreadsheetApp.getActiveSpreadsheet();
+   var sheet = ss.getSheetByName(langstr("FLB_STR_SHEETNAME_STUD_SUBM"));
+   if (sheet)
+     {
+       // sheet has already been renamed.
+       return STATUS_NO_EFFECT;
+     }
+   
+   // for non-english languages, try with the older style name.
+   // might still be laying around.
+   var sheet = ss.getSheetByName(gbl_subm_sheet_name);
+   if (sheet)
+     {
+       // sheet has already been renamed.
+       return STATUS_NO_EFFECT;
+     }
+   
+   var all_sheets = ss.getSheets();
+   if (all_sheets.length == 1)
+     {
+       // Only 1 sheet. Assume it has the student submissions, and
+       // rename it to something more friendly (and which we can refer
+       // to later).
+       sheet = all_sheets[0];
+       sheet.setName(langstr("FLB_STR_SHEETNAME_STUD_SUBM"));
+       return STATUS_OK;
+     }
+   else if (all_sheets.length > 1)
+     {
+       // More than one sheet. If can find "Sheet1", assume this one has
+       // the submissions and rename it.
+       sheet = ss.getSheetByName("Sheet1");
+       if (sheet != null)
+         {
+           // Rename "Sheet1" to something more friendly.
+           sheet.setName(langstr("FLB_STR_SHEETNAME_STUD_SUBM"));
+           return STATUS_OK;
+         }
+     }
+   num_rows
+   // Can't locate sheet with submissions. Tell the user.
+   return STATUS_NOT_FOUND;
+ }
+
+// getTipsRow:
+function getTipsRow(subm_sheet)
+{
+  // Get the help tips from the second row.
+  var help_tips_vals = singleRowToArray(subm_sheet,
+                                        2,
+                                        getNumQuestionsFromSubmissions(subm_sheet));
+
+  if (help_tips_vals[0] !== "")
+    {
+      return null;
+    }
+  
+  return help_tips_vals;
+}
+
 function showNewVersionNotice()
 {
   // check if this is the first time the user has upgrade to or installed a new
@@ -655,99 +780,37 @@ function showNewVersionNotice()
     }
 }
 
-function customLogClear()
+// justUpgradedThisSheet:
+// Returns true if this is the first time user has upgraded to or installed
+// a new version of Flubaroo in this spreadsheet.
+function justUpgradedThisSheet()
 {
-  if (!gbl_do_logging)
+  // Let the user know if this is a new version.
+  var sver = ScriptProperties.getProperty(SCRIPT_PROP_SHEET_INSTALLED_VERSION);
+  
+  // new version doesn't get set in properties until assignment
+  // is first graded after upgrading.
+  if ((sver == null) || (sver != gbl_version_str))
     {
-      return;
+      return true;
     }
   
-  Logger.clear();
-  
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("log");
-  
-  if (sheet)
-    {
-      sheet.deleteRows(2, sheet.getMaxRows() - 1);
-    }
-  
-  sheet.insertRowsAfter(1, 5);
+  return false;
 }
 
-function customLog(msg)
+// justUpgradedFirstTime:
+// Returns true if this is the first time the user has upgrade to or installed a new
+// version of Flubaroo.
+function justUpgradedFirstTime()
 {
-  if (!gbl_do_logging)
+  var uver = UserProperties.getProperty(USER_PROP_LATEST_VERSION_INSTALLED);
+  
+  // new version doesn't get set in properties until assignment
+  // is first graded after upgrading.
+  if ((uver == null) || (uver != gbl_version_str))
     {
-      return;
+      return true;
     }
   
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("log");
-  
-  // currently broken
-  Logger.log(msg);
-
-  if (sheet)
-    {
-      var row = sheet.getLastRow();
-      row = row + 1;
-      var single_cell = sheet.getRange(row, 1, 1, 1);
-      single_cell.setValue(msg);
-    }
+  return false;
 }
-
-// rowCache:
-// This object speeds reading of rows in a spreadsheet by reading not only the requested
-// row, but also the next 9 (for 10 total). Batching row reads is much faster than reading
-// individual ones, especially when reading through all rows in a sheet. 
-// It keeps a seperate cache for each sheet. The cache per sheet is of size 1, such that
-// if a cache miss occurs, the current 10 rows in the cache are kicked out.
-function rowCache(ss)
-{
-  this.ss = ss;
-  this.cache = new Array(); // indexed by sheet_index  
-}
-
-rowCache.prototype.getRow = function(sheet, row_num, num_cols)
-{
-  var sheet_index = sheet.getIndex();
-  
-  // check if this sheet has an entry or not.
-  if (!(sheet_index in this.cache))
-    {
-      this.cache[sheet_index] = new Array();
-    }
-     
-  var row_cache = this.cache[sheet_index];
-   
-  // check for this row in the cache
-  if (!(row_num in row_cache)
-      || (row_cache[row_num].length != num_cols))
-    {
-      // when a row cache miss occurs, clear all rows in the cache
-      this.cache[sheet_index] = null;
-
-      // create new assoc array. index will be row num. 10 entries.
-      row_cache = new Array();
-            
-      // read in the needed row, plus the next 9 (10 total)
-      var range = sheet.getRange(row_num, 1, 10, num_cols);
-      
-      var range_vals = range.getValues();
-      
-      for (var r=0; r < range.getNumRows(); r++)
-        {
-          // record the data for this row, indexed by row_number
-          row_cache[row_num+r] = range_vals[r];
-        }
-      
-      // record it for the sheet_id
-      this.cache[sheet_index] = row_cache;
-
-    }
- 
-  // lookup and return the row, which is now in the cache
-  return row_cache[row_num];
-};
-

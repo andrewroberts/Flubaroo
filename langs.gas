@@ -8,8 +8,6 @@ gbl_lang_id = ""; // identifies the language if the UI.
 
 function setLanguage()
 {
-   customLogClear();
-   
    var ss = SpreadsheetApp.getActiveSpreadsheet();
    var app = UiApp.createApplication()
                       .setTitle(langstr("FLB_STR_MENU_SET_LANGUAGE"))
@@ -55,7 +53,7 @@ function setLanguageHandler(e)
    var app = UiApp.getActiveApplication();
 
    var language_id = e.parameter.language_select;
-   customLog(language_id);
+   Debug.info("setLanguageHandler() - language id = " + language_id);
    
    UserProperties.setProperty(USER_PROP_LANGUAGE_ID, language_id);
    
@@ -90,7 +88,7 @@ function langstr(id)
 
 // langs:
 // Global collection of localized strings used in Flubaroo.
-  /* lang to do (June 7, 13)
+  /* lang TODO_DA (June 7, 13)
      - strings in histogram are not translated. need to url encode translated versions in the code, first.
   */
   
@@ -168,12 +166,12 @@ langs = {
     // Message shown when grading is complete (2 of 2).
     { "en-us" : "Tips: The very last row shows the percent of students who got each question correct, \
                  with overall low-scoring questions highlighted in orange. Also, individual students \
-                 who scored below 70% will appear in red font.",
+                 who scored below " + PASS_PERCENTAGE + "% will appear in red font.",
      
       "es-es" :  "Aviso: La última fila muestra el porcentaje de respuestas correctas. \
-                  Las preguntas con aciertos inferiores al 70 % se destacan con fondo de color naranja. \
-                  También se destaca con texto en rojo a los estudiantes que obtuvieron \
-                  una calificación inferior al 70%.",
+                  Las preguntas con aciertos inferiores al " + PASS_PERCENTAGE + "% se \
+                  destacan con fondo de color naranja. También se destaca con texto en \
+                  rojo a los estudiantes que obtuvieron una calificación inferior al " + PASS_PERCENTAGE + "%.",
     },
   
   "FBL_STR_STEP1_INSTR" :
@@ -258,6 +256,14 @@ langs = {
      
       "es-es" : "Flubaroo - Calificando Su Examen",
     },
+  
+  "FLB_STR_GRADING_CELL_MESSAGE" :
+    // Message in cell A1 that appears while assignment is being graded
+    { "en-us" : "Grading...",
+     
+      "es-es" : "Calificando...",
+    },
+  
   
   "FLB_STR_GRADING_COMPLETE_TITLE" :
     // Window title for "Grading Complete" window after grading occurs
@@ -781,6 +787,21 @@ langs = {
       "es-es" : "Seleccionar Idioma",
     },
 
+  // TODO_DA - Translation needed.
+
+ "FLB_STR_MENU_ENABLE_AUTO_GRADE" :
+    // Menu option to enable autograde feature
+    { "en-us" : "Enable Autograde",
+     
+      "es-es" : "Translation Needed",
+    },
+
+  "FLB_STR_MENU_DISABLE_AUTO_GRADE" :
+    // Menu option to disable autograde feature
+    { "en-us" : "Disable Autograde",
+     
+      "es-es" : "Translation Needed",
+    },
   
   "FLB_STR_BUTTON_CONTINUE" :
     // Word that appears on the "Continue" button in grading and emailing grades.
@@ -897,4 +918,3 @@ langs = {
     },
 
 } // end langs
-

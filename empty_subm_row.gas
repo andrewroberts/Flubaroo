@@ -1,0 +1,111 @@
+// empty_subm_row.gas.gs
+// =====================
+//
+// The next empty row in a submission sheet, and methods to access it.
+
+// Unit Tests
+// ==========
+
+// testEmptySubmRow()
+// ------------------
+
+function testEmptySubmRow()
+{
+  var old_value = EmptySubmRow.get();
+  
+  EmptySubmRow.set(9999);
+  Debug.assert(EmptySubmRow.get() === 9999, "testEmptySubmRow() - FAILED 2");
+  
+  EmptySubmRow.set(old_value);
+  
+  return true;
+  
+} // testEmptySubmRow()
+
+// Empty Submission Row Service
+// ============================
+
+EmptySubmRow = new EmptySubmRowClass();
+
+// EmptySubmRowClass()
+// --------------------
+//
+// Keep a local copy of the next empty row in submission sheet. This 
+// speeds things up a bit but is also to overcome possible caching 
+// issues with retrieving the script property during the context
+// of a single thread, ie. if the value is set and then got quickly 
+// the value returned isn't always the new one.
+
+function EmptySubmRowClass()
+{
+  var empty_subm_row;
+
+  // EmptySubmRowClass.get()
+  // -----------------------
+  //
+  // return next empty row in submission sheet or -1.
+  
+  this.get = function()
+  {
+    if (typeof empty_subm_row === 'undefined')
+      {
+        var num_string = ScriptProperties.getProperty(SCRIPT_PROP_EMPTY_SUBM_ROW_PTR);
+        
+        if (num_string !== null)
+          {
+            empty_subm_row = Number(num_string);
+
+            if (empty_subm_row === NaN)
+              {
+                Debug.error("EmptySubmRowClass.get() - non-numeric value");
+                empty_subm_row = -1;
+              }
+          }
+        else
+          {
+            Debug.warning("EmptySubmRowClass.get() - value not stored yet");
+            empty_subm_row = -1;            
+          }
+      }
+    else if (typeof empty_subm_row !== 'number')
+      {
+        Debug.error("EmptySubmRowClass.get() - unexpected type");
+        empty_subm_row = -1;
+      }
+
+    Debug.info("EmptySubmRowClass.get() - " + 
+               "empty_subm_row: " + empty_subm_row);
+
+    return empty_subm_row;
+    
+  } // EmptySubmRowClass.get()
+  
+  // EmptySubmRowClass.set()
+  // ------------------------
+  
+  this.set = function(value)
+  {
+    Debug.assert(typeof value === 'number',
+                 "EmptySubmRowClass.set() - non-number parameter");
+  
+    empty_subm_row = value;
+  
+    ScriptProperties.setProperty(SCRIPT_PROP_EMPTY_SUBM_ROW_PTR, value);
+    
+    Debug.info("EmptySubmRowClass.set() - " + 
+               "empty_subm_row: " + value);
+    
+  } // EmptySubmRowClass.set()
+    
+  // EmptySubmRowClass.isStored()
+  // ----------------------------
+  //
+  // Whether a valued had been stored in the Script Properties yet.
+  
+  this.isStored = function()
+  { 
+    return (typeof empty_subm_row === 'number') ? true : false;
+    
+  } // EmptySubmRowClass.isStored()
+        
+} // EmptySubmRowClass()
