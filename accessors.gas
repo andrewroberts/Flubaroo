@@ -1,0 +1,120 @@
+// File: accessors.gas
+// Description: 
+// This file contains functions that access data in the
+// 'Student Submissions' and 'Grades' sheets. 
+// Functions in this file are meant to centralize and obfuscate private 
+// information about where different fields (like hidden rows) are stored.
+// Other functions that simply make spreadsheet access easier
+// (e.g. getCellValue), but which don't utilize private info, should be
+// placed in the 'utilities.gas' file instead of this one.
+
+ 
+ // getNumQuestionsFromSubmissions:
+ // Given a reference to the submissions sheet, calculates and returns the number
+ // of questions that were asked in the assignment, including the implicit
+ // "Timestamp" question.
+ function getNumQuestionsFromSubmissions(subm_sheet)
+ {
+   var n_ques = subm_sheet.getLastColumn();
+
+   var question_vals = singleRowToArray(subm_sheet, 1, n_ques);
+   
+   // make sure the user didn't do any rearranging of columns, leaving
+   // blank columns at the end.
+   for (var i = question_vals.length - 1; i >= 0; i--)
+     {
+       if (question_vals[i] != "")
+         {
+           break;
+         }
+       n_ques--;
+     }
+   
+   return n_ques;
+ }
+
+ // getSheetWithSubmissions:
+ // Finds the sheet in the active spreadsheet with the submissions from the form,
+ // and returns an instance of it. If not found, returns null.
+ function getSheetWithSubmissions(ss)
+ {
+   var sheet = getSheetWithSubmissionsInternal(ss);
+   
+   // handle GAS bug
+   if (sheet == null)
+     {
+       // Try again. may be bug in GAS. Line below prevents occurence of this bug:
+       //    https://code.google.com/p/google-apps-script-issues/issues/detail?id=2559
+       ss.setActiveSheet(SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]);
+     }
+   
+   sheet = getSheetWithSubmissionsInternal(ss);
+   
+   return sheet;
+ }
+
+function getSheetWithSubmissionsInternal(ss)
+{
+   var sheet = ss.getSheetByName(langstr("FLB_STR_SHEETNAME_STUD_SUBM"));
+   
+   if (sheet == null)
+     {
+       // could be that user switch languages since older version.
+       // just check with old (pre v3.0) name ("Student Submissions")
+       // for backwards compatability.
+       sheet = ss.getSheetByName(gbl_subm_sheet_name);
+       
+       // if not english, then rename old style name to localized
+       // version.
+       var lang_id = UserProperties.getProperty(USER_PROP_LANGUAGE_ID);
+       if ((sheet != null) && (lang_id != null) && (lang_id != 'en-us'))
+         {
+           sheet.setName(langstr("FLB_STR_SHEETNAME_STUD_SUBM"));
+         }
+     }
+         
+   return sheet;
+ }
+
+// getSheetWithGrades:
+// Finds the sheet in the active spreadsheet with the grades,
+// and returns an instance of it. If not found, returns null.
+function getSheetWithGrades(ss)
+ {
+   var sheet = getSheetWithGradesInternal(ss);
+   
+   if (sheet == null)
+     {
+       // Try again. may be bug in GAS. Line below prevents occurence of this bug:
+       //    https://code.google.com/p/google-apps-script-issues/issues/detail?id=2559
+       ss.setActiveSheet(SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]);
+     }
+
+   sheet = getSheetWithGradesInternal(ss);
+   return sheet;
+ }
+
+   
+function getSheetWithGradesInternal(ss)
+{
+   var sheet = ss.getSheetByName(langstr("FLB_STR_SHEETNAME_GRADES"));
+  
+   if (sheet == null)
+     {
+       // could be that user switch languages since older version.
+       // just check with old (pre v3.0) name ("Student Submissions")
+       // for backwards compatability.
+       sheet = ss.getSheetByName(gbl_grades_sheet_name);
+       
+       // if not english, then rename old style name to localized
+       // version.
+       var lang_id = UserProperties.getProperty(USER_PROP_LANGUAGE_ID);
+       if ((sheet != null) && (lang_id != null) && (lang_id != 'en-us'))
+         {
+           sheet.setName(langstr("FLB_STR_SHEETNAME_GRADES"));
+         }
+
+     }
+   
+   return sheet;
+}

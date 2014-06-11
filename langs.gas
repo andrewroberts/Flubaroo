@@ -1,0 +1,900 @@
+// lang.gas
+// Contains definitions for all localized strings in Flubaroo.
+// Any language specific string or message should be placed in this file.
+
+
+gbl_lang_id = ""; // identifies the language if the UI.
+
+
+function setLanguage()
+{
+   customLogClear();
+   
+   var ss = SpreadsheetApp.getActiveSpreadsheet();
+   var app = UiApp.createApplication()
+                      .setTitle(langstr("FLB_STR_MENU_SET_LANGUAGE"))
+                      .setWidth("200").setHeight("90");
+
+   var handler = app.createServerClickHandler('setLanguageHandler');
+  
+   // create the main panel to hold all content in the UI for this step,
+   var main_panel = app.createVerticalPanel()
+                       .setStyleAttribute('border-spacing', '10px');
+   app.add(main_panel);
+  
+   ss.show(app);
+ 
+   // create a pull-down box containing all the questions which identify a
+   // student. 
+   var lbox_name = "language_select";
+   var lbox = app.createListBox(false).setId(lbox_name).setName(lbox_name);
+   var position = -1;
+   
+   lbox.addItem("English", "en-us");
+   lbox.addItem("Español", "es-es");
+   
+   lbox.setSelectedIndex(0);    
+   handler.addCallbackElement(lbox);  
+  
+    var hpanel = app.createHorizontalPanel()
+       .setStyleAttribute('border-spacing', '6px')
+    .add(app.createLabel(langstr("FLB_STR_MENU_SET_LANGUAGE") + ":"))
+       .add(lbox);
+   main_panel.add(hpanel);
+
+   var btnSubmit = app.createButton(langstr("FLB_STR_BUTTON_CONTINUE"),handler).setId('CONTINUE');
+  
+   main_panel.add(btnSubmit);
+ 
+   ss.show(app);   
+ }
+
+function setLanguageHandler(e)
+ {
+   var ss = SpreadsheetApp.getActiveSpreadsheet();
+   var app = UiApp.getActiveApplication();
+
+   var language_id = e.parameter.language_select;
+   customLog(language_id);
+   
+   UserProperties.setProperty(USER_PROP_LANGUAGE_ID, language_id);
+   
+   // reload menu
+   createFlubarooMenu(ss);
+   
+   // rename Student Submissions sheet, if it was already set to an English name.
+   //renameSubmissionsSheet();
+   
+   app.close()
+   return app;
+ }
+
+
+// langstr: Given a string id, returns the localized version of that string, based on the global gbl_lang_id.
+function langstr(id)
+{
+  if (gbl_lang_id == "")
+    {
+      // not yet defined. look it up!
+      gbl_lang_id = UserProperties.getProperty(USER_PROP_LANGUAGE_ID);
+      
+      if (gbl_lang_id == "" || gbl_lang_id == null || gbl_lang_id === undefined)
+        {
+          // never explicitly set by user (via menu). set to default.
+          gbl_lang_id = "en-us"; // default
+        }
+    }
+
+  return langs[id][gbl_lang_id];
+}
+
+// langs:
+// Global collection of localized strings used in Flubaroo.
+  /* lang to do (June 7, 13)
+     - strings in histogram are not translated. need to url encode translated versions in the code, first.
+  */
+  
+langs = { 
+  
+
+  "FLB_STR_GRADING_OPT_STUD_ID" :
+    // Grading option which identifies a student
+    { "en-us" : "Identifies Student",
+     
+      "es-es" : "Identifica alumno",
+    },
+    
+  "FLB_STR_GRADING_OPT_SKIP_GRADING" :
+    // Grading option which tells Flubaroo to skip grading on a question
+    { "en-us" : "Skip Grading",
+     
+      "es-es" : "No evaluar",
+    },
+
+  "FLB_STR_GRADING_OPT_1_PT" :
+    // Grading option for 1 point
+    { "en-us" : "1 Point",
+     
+      "es-es" : "1 Punto",
+    },
+  
+  "FLB_STR_GRADING_OPT_2_PT" :
+    // Grading option for 2 points
+    { "en-us" : "2 Points",
+     
+      "es-es" : "2 Puntos",
+    },
+  
+  "FLB_STR_GRADING_OPT_3_PT" :
+    // Grading option for 3 points
+    { "en-us" : "3 Points",
+     
+      "es-es" : "3 Puntos",
+    },
+  
+  "FLB_STR_GRADING_OPT_4_PT" :
+    // Grading option for 4 points
+    { "en-us" : "4 Points",
+     
+      "es-es" : "4 Puntos",
+    },
+  
+  "FLB_STR_GRADING_OPT_5_PT" :
+    // Grading option for 5 points
+    { "en-us" : "5 Points",
+     
+      "es-es" : "5 Puntos",
+    },  
+
+  "FLB_STR_RESULTS_MSG1" : 
+    // Message shown when grading is complete (1 of 2).
+    { 
+        "en-us": "Grading has completed! A new worksheet called 'Grades' has been created. \
+                  This worksheet contains a grade for each submission, and a summary of all grades \
+                  at the top. ** Note: The 'Grades' sheet is not meant to be modified in any way, as \
+                  this can interfere with emailing grades. If you need to modify this sheet, copy it \
+                  and modify the copy.",
+      
+         "es-es":	"¡La calificación ha finalizado! Se ha creado una nueva hoja de cálculo \
+                    llamada 'Calificaciones'. \
+                    Esta hoja de cálculo contiene una calificación por cada envío y un resumen de todas \
+                    las calificaciones en la parte superior. ** Nota: La hoja de cálculo 'Calificaciones' \
+                    no debe ser modificada, ya que puede interferir en el envío de las calificaciones por\
+                    correo electrónico. Si necesita modificar esta hoja, por favor, haga una copia \
+                    y modifique dicha copia.",
+    },
+                
+  "FLB_STR_RESULTS_MSG2" :
+    // Message shown when grading is complete (2 of 2).
+    { "en-us" : "Tips: The very last row shows the percent of students who got each question correct, \
+                 with overall low-scoring questions highlighted in orange. Also, individual students \
+                 who scored below 70% will appear in red font.",
+     
+      "es-es" :  "Aviso: La última fila muestra el porcentaje de respuestas correctas. \
+                  Las preguntas con aciertos inferiores al 70 % se destacan con fondo de color naranja. \
+                  También se destaca con texto en rojo a los estudiantes que obtuvieron \
+                  una calificación inferior al 70%.",
+    },
+  
+  "FBL_STR_STEP1_INSTR" :
+    // Instructions shown on Step 1 of grading.
+    {
+      "en-us" : "Please select a grading option for each of the  \
+                questions in the assignment. Flubaroo has done its \
+                best to guess the best option for you, but you  \
+                should check the option for each question yourself.",
+      
+      "es-es" : "Por favor, seleccione una opción de calificación para \
+                 cada una de las preguntas. Flubaroo se ha diseñado para \
+                 tratar de identificar la opción adecuada, pero usted \
+                 debe comprobar si la opción escogida para cada cuestión \
+                 es la correcta.",
+    },
+  
+  "FBL_STR_STEP2_INSTR" :
+    // Instructions shown on Step 2 of grading.
+    {
+      "en-us" : "Please select which submission should be used as \
+                the Answer Key. Typically this will be a submission \
+                made by you. All other submissions will be \
+                graded against the Answer Key, so take care to \
+                ensure that you select the right one.",
+      
+      "es-es" : "Por favor, seleccione la fila que se utilizará como \
+                 Clave de Respuestas. Normalmente, debería ser la primera \
+                 enviada por usted. El resto de respuestas serán evaluadas \
+                 comparando con la Fila Clave. Preste atención para \
+                 asegurarse de seleccionar la correcta.",
+    },
+
+  "FBL_STR_GRADE_NOT_ENOUGH_SUBMISSIONS" :
+    // Message shown if not enough submissions to perform grading.
+    {
+      "en-us" : "There must be at least 2 submissions to perform \
+                 grading. Please try again when more students have \
+                 submitted their answers.",
+      
+      "es-es" : "Importante: Debe haber al menos 2 respuestas \
+                 para poder Calificar. Inténtelo de nuevo cuando \
+                 al menos haya 2 filas con respuestas.",
+    },  
+
+  
+  "FLB_STR_WAIT_INSTR1" :
+    // Please wait" message first shown when Flubaroo is first examining assignment.
+    { "en-us" : "Flubaroo is examining your assignment. Please wait...",
+     
+      "es-es" : "Flubaroo está comprobando sus asignaciones. Por favor, espere...",
+    },
+  
+  "FLB_STR_WAIT_INSTR2" :
+    // Please wait" message shown after Step 1 and Step 2, while grading is happening.
+    { "en-us" : "Please wait while your assignment is graded. This may \
+                 take a minute or two to complete.",
+     
+      "es-es" : "Por favor, espere mientras se procede a la calificación. \
+                 Puede tardar entre uno y dos minutos en terminar.",
+    },
+
+  "FLB_STR_REPLACE_GRADES_PROMPT" :
+    // Asks user if they are sure they want to re-grade, if Grades sheet exists.
+    { "en-us" : "This will replace your existing grades. Are you sure you \
+                 want to continue?",
+     
+      "es-es" : "Se reemplazarán las calificaciones existentes. \
+                ¿Quieres continuar? ",
+    },  
+
+  "FLB_STR_PREPARING_TO_GRADE_WINDOW_TITLE" :
+    // Window title for "Preparing to grade" window
+    { "en-us" : "Flubaroo - Preparing to Grade",
+     
+      "es-es" : "Flubaroo - Preparando para Calificar",
+    },
+
+  "FLB_STR_GRADING_WINDOW_TITLE" :
+    // Window title for "Please wait" window while grading occurs
+    { "en-us" : "Flubaroo - Grading Your Assignment",
+     
+      "es-es" : "Flubaroo - Calificando Su Examen",
+    },
+  
+  "FLB_STR_GRADING_COMPLETE_TITLE" :
+    // Window title for "Grading Complete" window after grading occurs
+    { "en-us" : "Flubaroo - Grading Complete",
+     
+      "es-es" : "¡Flubaroo - Clasificación ha Finalizado!",
+    },
+
+  "FLB_STR_GRADE_STEP1_WINDOW_TITLE" :
+    // Window title for grading Step 1
+    { "en-us" : "Flubaroo - Grading Step 1",
+     
+      "es-es" : "Flubaroo - Calificación PASO 1",
+    },
+
+  "FLB_STR_GRADE_STEP2_WINDOW_TITLE" :
+    // Window title for grading Step 2
+    { "en-us" : "Flubaroo - Grading Step 2",
+     
+      "es-es" : "Flubaroo - Calificación PASO 2",
+    },
+  
+  "FLB_STR_GRADE_STEP1_LABEL_GRADING_OPTION" :
+    // "Grading Option" label that appears over first column in Step 1 of grading.
+  { "en-us" : "Grading Option",
+     
+      "es-es" : "Opciones de Calificación",
+    },
+ 
+  "FLB_STR_GRADE_STEP1_LABEL_QUESTION" :
+    // "Question" label that appears over second column in Step 1 of grading.
+    { "en-us" : "Question",
+     
+      "es-es" : "Cuestión",
+    },
+
+  "FLB_STR_GRADE_STEP2_LABEL_SELECT" :
+    // "Select" label that appears over radio button in first column of Step 2 of grading.
+    { "en-us" : "Select",
+     
+      "es-es" : "Seleccione",
+    },
+
+  "FLB_STR_GRADE_STEP2_LABEL_SUBMISSION_TIME" :
+    // "Submission Time" label that appears over second column in Step 2 of grading.
+    { "en-us" : "Submission Time",
+     
+      "es-es" : "Fecha de Envío",
+    },  
+
+  "FLB_STR_GRADE_BUTTON_VIEW_GRADES" :
+    // Label for "View Grades" button shown when grading completes.
+    { "en-us" : "View Grades",
+     
+      "es-es" : "Ver calificaciones",
+    },
+  
+  "FLB_STR_GRADE_SUMMARY_TEXT_SUMMARY" :
+    // Used for "summary" text shown at top of Grades sheet, and in report. 
+    { "en-us" : "Summary",
+     
+      "es-es" : "Resultados",
+    },
+  
+  "FLB_STR_GRADE_SUMMARY_TEXT_REPORT_FOR" :
+    // Used for report and report email. Ex: "Report for 'My Test'" 
+    { "en-us" : "Report for",
+     
+      "es-es" : "Informe para",
+    },
+
+  "FLB_STR_GRADE_SUMMARY_TEXT_POINTS_POSSIBLE" :
+    // Points Possible. Used for text shown at top of Grades sheet, and in report.
+    { "en-us" : "Points Possible",
+     
+      "es-es" : "Puntos Posibles",
+    },
+  
+  "FLB_STR_GRADE_SUMMARY_TEXT_AVERAGE_POINTS" :
+    // Average Points. Used for text shown at top of Grades sheet, and in report.
+    { "en-us" : "Average Points",
+     
+      "es-es" : "Promedio de Puntos",
+    },
+
+  "FLB_STR_GRADE_SUMMARY_TEXT_COUNTED_SUBMISSIONS" :
+    // Counted Submissions. Used for text shown at top of Grades sheet, and in report.
+    { "en-us" : "Counted Submissions",
+     
+      "es-es" : "Número de Envíos",
+    },
+
+  "FLB_STR_GRADE_SUMMARY_TEXT_NUM_LOW_SCORING" :
+    // Number of Low Scoring Questions. Used for text shown at top of Grades sheet, and in report.
+    { "en-us" : "Number of Low Scoring Questions",
+     
+      "es-es" : "Preguntas con Calificación inferior al 70%",
+    },
+
+  "FLB_STR_GRADES_SHEET_COLUMN_NAME_TOTAL_POINTS" :
+    // Name of column in Grades sheet that has total points scored.
+    { "en-us" : "Total Points",
+     
+      "es-es" : "Total Puntos",
+    },
+
+  "FLB_STR_GRADES_SHEET_COLUMN_NAME_PERCENT" :
+    // Name of column in Grades sheet that has score as percent.
+    { "en-us" : "Percent",
+     
+      "es-es" : "Porcentaje",
+    },
+
+  "FLB_STR_GRADES_SHEET_COLUMN_NAME_TIMES_SUBMITTED" :
+    // Name of column in Grades sheet that has number of times student made a submission.
+    { "en-us" : "Times Submitted",
+     
+      "es-es" : "Número de Envíos",
+    },  
+  
+  "FLB_STR_GRADES_SHEET_COLUMN_NAME_EMAILED_GRADE" :
+    // Name of column in Grades sheet that indicates if grade was already emailed out.
+    { "en-us" : "Emailed Grade?",
+     
+      "es-es" : "¿Calificaciones enviadas?",
+    },      
+  
+"FLB_STR_GRADES_SHEET_COLUMN_NAME_STUDENT_FEEDBACK" :
+    // Name of column in Grades sheet that allows teacher to enter optional student feedback
+    { "en-us" : "Feedback for Student (Optional)",
+     
+      "es-es" : "Comentario para el alumno (Opcional)",
+    },   
+  
+  "FLB_STR_EMAIL_GRADES_WINDOW_TITLE" :
+    // Window title for emailing grades
+    { "en-us" : "Flubaroo - Email Grades",
+     
+      "es-es" : "Flubaroo - Envío de Calificaciones",
+    },
+  
+  "FLB_STR_EMAIL_GRADES_INSTR" :
+    // Instructions on how to email grades
+    { "en-us" : "Flubaroo can email each student their grade, \
+                 as well as the correct answers. \
+                 Use the pull-down menu to select the question \
+                 that asked students for their email \
+                 address. If email addresses \
+                 were not collected, then you will not be able \
+                 to email grades.",
+     
+      "es-es" : "Flubaroo puede enviar por correo a cada alumno su calificación, \
+                 así como las respuestas correctas. \
+                 Use el menú desplegable para seleccionar la pregunta \
+                 que contiene la dirección de correo \
+                 electrónico. Si las direcciones de correo electrónico \
+                 no fueron enviadas por los alumnos, \
+                 no será posible enviar las calificaciones.",
+    },
+  
+  "FLB_STR_VIEW_EMAIL_GRADES_NUMBER_SENT" :
+    // Message about how many grade emails *have* been sent. This message is preceeded by a number.
+    { "en-us" : "grades were successfully emailed",  // (example: "5 grades were successfully emailed")
+     
+      "es-es" : " informes de Calificaciones se enviaron corectamente",
+    },  
+
+  "FLB_STR_VIEW_EMAIL_GRADES_NUMBER_UNSENT" :
+    // Message about how many grade emails *have NOT* been sent. This message is preceeded by a number.
+    { "en-us" : "grades were not sent due to invalid or blank email addresses, \
+                 or because they have already been emailed their grades.",
+     
+      "es-es" : "envíos no se han realizado - dirección incorrecta,\
+                 en blanco o ya fueron efectuados con anterioridad.",
+    },  
+    
+  "FLB_STR_VIEW_EMAIL_GRADES_NO_EMAILS_SENT" :
+    // Message about how many grade emails *have NOT* been sent.
+    { "en-us" : "No grades were emailed because no valid email addresses were found, \
+                 or because all students have already been emailed their grades.",
+     
+      "es-es" : "No se ha efectuado el envío - No se encontraron direcciones válidas\
+                 o el envío ya se ha realizado.",
+    },     
+
+  "FLB_STR_EMAIL_GRADES_EMAIL_SUBJECT" :
+    // Subject of the email students receive. Followed by assignment name. 
+    // Example: Here is your grade for "Algebra Quiz #6"
+    { "en-us" : "Here is your grade for",
+ 
+      "es-es" : "Te enviamos tus resultados del examen:",
+    },     
+  
+  "FLB_STR_EMAIL_GRADES_EMAIL_BODY_START" :
+    // First line of email sent to students
+    // Example: This email contains your grade for "Algebra Quiz #6"
+    { "en-us" : "This email contains your grade for",
+ 
+      "es-es" : "Este correo contiene tus calificaciones para",
+    },     
+                              
+  "FLB_STR_EMAIL_GRADES_DO_NOT_REPLY_MSG" :
+    // Message telling students not to reply to the email with their grades
+    { "en-us" : "Do not reply to this email",
+ 
+      "es-es" : "Por favor no responda a este correo",
+    },    
+                             
+  "FLB_STR_EMAIL_GRADES_YOUR_GRADE" :
+    // Message that preceedes the student's grade
+    { "en-us" : "Your grade (points)",
+ 
+      "es-es" : "Calificación (puntos)",
+    },    
+  
+  "FLB_STR_EMAIL_GRADES_INSTRUCTOR_MSG_BELOW" :
+    // Message that preceedes the instructor's (optional) message in the email
+    { "en-us" : "Below is a message from your instructor, sent to the entire class",
+ 
+      "es-es" : "Debajo verás un mensaje de tu Profesor/a, envió a toda la clase",
+    },
+  
+  "FLB_STR_EMAIL_GRADES_STUDENT_FEEDBACK_BELOW" :
+    // Message that preceedes the instructor's (optional) feedback for the student in the email
+    { "en-us" : "Your instructor has this feedback just for you",
+ 
+      "es-es" : "Comentario de tu profesor/a, sólo para ti",
+    }, 
+  
+  "FLB_STR_EMAIL_GRADES_SUBMISSION_SUMMARY" :
+    // Message that preceedes the summary of the student's information (name, date, etc)
+    { "en-us" : "Summary of your submission",
+ 
+      "es-es" : "Resumen de tu examen",
+    },    
+
+    "FLB_STR_EMAIL_GRADES_BELOW_IS_YOUR_SCORE" :
+    // Message that preceedes the table of the students scores (no answer key sent)
+    { "en-us" : "Below is your score for each question",
+ 
+      "es-es" : "Debajo está tu puntuación para cada pregunta",
+    },    
+  
+  "FLB_STR_EMAIL_GRADES_BELOW_IS_YOUR_SCORE_AND_THE_ANSWER" :
+    // Message that preceedes the table of the students scores, and answer key
+    { "en-us" : "Below is your score for each question, along with the correct answer",
+ 
+      "es-es" : "Debajo está tu puntuación para cada pregunta junto a la respuesta correcta",
+    },    
+
+  "FLB_STR_EMAIL_GRADES_SCORE_TABLE_QUESTION_HEADER" :
+    // Header for the  column in the table of scores in the email which lists the question asked.
+    { "en-us" : "Question",
+ 
+      "es-es" : "Pregunta",
+    },    
+
+  "FLB_STR_EMAIL_GRADES_SCORE_TABLE_YOUR_ANSWER_HEADER" :
+    // Header for the  column in the table of scores in the email which lists the student's answer.
+    { "en-us" : "Your Answer",
+ 
+      "es-es" : "Su Respuesta",
+    },    
+
+  "FLB_STR_EMAIL_GRADES_SCORE_TABLE_CORRECT_ANSWER_HEADER" :
+    // Header for the  column in the table of scores in the email which lists the correct answer.
+    { "en-us" : "Correct Answer",
+ 
+      "es-es" : "Respuesta Correcta",
+    }, 
+  
+   "FLB_STR_EMAIL_GRADES_SCORE_TABLE_YOUR_SCORE_HEADER" :
+    // Header for the column in the table of scores in the email which lists the student's score (0, 1, 2...)
+    { "en-us" : "Your Score",
+ 
+      "es-es" : "Tu Puntuación",
+    }, 
+  
+  "FLB_STR_EMAIL_GRADES_SCORE_TABLE_POINTS_POSSIBLE_HEADER" :
+    // Header for the  column in the table of scores in the email which lists the points possible (e.g. 5).
+    { "en-us" : "Points Possible",
+ 
+      "es-es" : "Puntos Posibles",
+    }, 
+  
+  "FLB_STR_EMAIL_GRADES_SCORE_TABLE_HELP_TIP_HEADER" :
+    // Header for the  column in the table of scores in the email which lists the Help Tip (if provided)
+    { "en-us" : "Help for this Question",
+ 
+      "es-es" : "Ayuda para esta Pregunta/Ítem",
+    }, 
+  
+  "FLB_STR_EMAIL_GRADES_SCORE_TABLE_POINTS" :
+    // Label for "points" used in the new style email summary of grades
+    { "en-us" : "point(s)",
+ 
+      "es-es" : "punto(s)",
+    }, 
+
+  "FLB_STR_EMAIL_GRADES_SCORE_TABLE_CORRECT" :
+    // Label for "Correct" questions in new style email summary of grades
+    { "en-us" : "Correct",
+ 
+      "es-es" : "Correcta",
+    }, 
+  
+   "FLB_STR_EMAIL_GRADES_SCORE_TABLE_INCORRECT" :
+    // Label for "Incorrect" questions in new style email summary of grades
+    { "en-us" : "Incorrect",
+ 
+      "es-es" : "Incorrecta",
+    }, 
+
+  "FLB_STR_EMAIL_GRADES_EMAIL_FOOTER" :
+    // Footer for the email sent to students, advertising Flubaroo.
+    { "en-us" : "This email was generated by Flubaroo, a free tool for grading and assessments",
+ 
+      "es-es" : "Este correo fue generado por Flubaroo, una aplicación de uso gratuito para evaluar y enviar calificaciones",
+    }, 
+  
+  "FLB_STR_EMAIL_GRADES_VISIT_FLUBAROO" :
+    // Link at the end of the footer. Leads to www.flubaroo.com
+    { "en-us" : "Visit flubaroo.com",
+ 
+      "es-es" : "Visita flubaroo.com",
+    }, 
+  
+  "FLB_STR_EMAIL_RECORD_EMAIL_SUBJECT":
+    // Subject of the record email sent to the instructor, when grades are emailed to the class.
+    // Followed by the assignment name.
+    // e.g. Record of grades emailed for Algebra Quiz #6
+    { "en-us" : "Record of grades emailed for",
+ 
+      "es-es" : "Informe sobre tu envío de calificaciones en",
+    }, 
+
+  "FLB_STR_EMAIL_RECORD_ASSIGNMENT_NAME":
+    // Used in the record email sent to the instructor after she emails grades.
+    // Labels the name of the assignment, in the summary table.
+    { "en-us" : "Assignment Name",
+ 
+      "es-es" : "Nombre del Examen",
+    }, 
+
+  "FLB_STR_EMAIL_RECORD_NUM_EMAILS_SENT":
+    // Used in the record email sent to the instructor after she emails grades.
+    // Labels the number of emails sent, in the summary table.
+    { "en-us" : "Number of Emails Sent",
+ 
+      "es-es" : "Cantidad de Correos Electrónicos Enviados",
+    }, 
+
+  "FLB_STR_EMAIL_RECORD_NUM_GRADED_SUBM":
+    // Used in the record email sent to the instructor after she emails grades.
+    // Labels the number of graded submissions, in the summary table
+    { "en-us" : "Number of Graded Submissions",
+ 
+      "es-es" : "Cantidad de Envíos Calificados",
+    }, 
+  
+  "FLB_STR_EMAIL_RECORD_AVERAGE_SCORE":
+    // Used in the record email sent to the instructor after she emails grades.
+    // Labels the average score in points (vs percent), in the summary table
+    { "en-us" : "Average Score (points)",
+ 
+      "es-es" : "Puntuación Promedio (puntos)",
+    }, 
+  
+  "FLB_STR_EMAIL_RECORD_POINTS_POSSIBLE":
+    // Used in the record email sent to the instructor after she emails grades.
+    // Labels the points possible, in the summary table
+    { "en-us" : "Points Possible",
+ 
+      "es-es" : "Máxima Calificación Posible",
+    }, 
+
+  "FLB_STR_EMAIL_RECORD_ANSWER_KEY_PROVIDED":
+    // Used in the record email sent to the instructor after she emails grades.
+    // Indicated if an answer key was provided to the students, in the summary table
+    { "en-us" : "Answer Key Provided?",
+ 
+      "es-es" : "¿Lista de Respuestas Enviada? ",
+    }, 
+
+  "FLB_STR_EMAIL_RECORD_ANSWER_KEY_NO":
+    // Used in the record email sent to the instructor after she emails grades.
+    // Value in summary table if answer key was NOT sent to students by instructor
+    { "en-us" : "No",
+ 
+      "es-es" : "No",
+    }, 
+
+  "FLB_STR_EMAIL_RECORD_ANSWER_KEY_YES":
+    // Used in the record email sent to the instructor after she emails grades.
+    // Value in summary table if answer key WAS sent to students by instructor
+    { "en-us" : "Yes",
+ 
+      "es-es" : "Si",
+    }, 
+  
+  
+  "FLB_STR_EMAIL_RECORD_INSTRUCTOR_MESSAGE":
+    // Used in the record email sent to the instructor after she emails grades.
+    // Message that preceeds what message the instructor email to her students.
+    { "en-us" : "You also included this message",
+ 
+      "es-es" : "Usted incluyó este mensaje",
+    }, 
+
+  "FLB_STR_ABOUT_FLUBAROO_MSG1" :
+    // About Flubaroo message (1 of 2)
+    { "en-us" : "Flubaroo is a free, time-saving tool that allows \
+                 teachers to quickly grade multiple choice assignments \
+                 and analyze the results",
+     
+      "es-es" : "Flubaroo es una herramienta libre, que permite \
+                 ahorrar tiempo a los profesores, ya que califica \
+                 rápidamente pruebas de selección múltiple y analiza \
+                 los resultados de forma automatizada.",
+    },
+  
+  "FLB_STR_ABOUT_FLUBAROO_MSG2" :
+    // About Flubaroo message (2 of 2)
+    { "en-us" : "To learn more, visit www.flubaroo.com. Also send \
+                 feedback or ideas to feedback@flubaroo.com.",
+     
+      "es-es" : "Para aprender más visite www.flubaroo.com. También \
+                 puede enviar sus comentarios o ideas a feedback@flubaroo.com.",
+    },
+  
+  "FLB_STR_CANNOT_FIND_SUBM_MSG" :
+    // Message that appears when "Student Submissions" sheet cannot be located.
+    { "en-us" : "Flubaroo could not determine which sheet contains the \
+                 student submissions. Please locate this sheet, \
+                 and rename it to: ",
+     
+      "es-es" : "Flubaroo no puede determinar la hoja de cálculo que contiene \
+                 los envíos de los estudiantes. Por favor localice esta \
+                 hoja y renómbrela como: ",
+    },
+
+  "FLB_STR_CANNOT_FIND_GRADES_MSG" :
+    // Message that appears when "Grades" sheet cannot be located.
+    { "en-us" : "Flubaroo could not determine which sheet contains the \
+                grades. Please grade the assignment, or locate this sheet, \
+                and rename it to: ",
+     
+      "es-es" : "Flubaroo no puede determinar la hoja de cálculo que contiene \
+                 los calificaciones. Por favor, volver a calificar, \
+                 o localice esta hoja y renómbrela como: ",
+    },  
+  
+  "FLB_STR_MENU_GRADE_ASSIGNMENT" :
+    // Menu option to grade assignment.
+    { "en-us" : "Grade Assignment",
+     
+      "es-es" : "Calificar Tarea",
+    },
+
+  "FLB_STR_MENU_REGRADE_ASSIGNMENT" :
+    // Menu option to re-grade assignment.
+    { "en-us" : "Regrade Assignment",
+     
+      "es-es" : "Volver a Calificar",
+    },
+
+  "FLB_STR_MENU_EMAIL_GRADES" :
+    // Menu option to email grades.
+    { "en-us" : "Email Grades",
+     
+      "es-es" : "Enviar Calificaciones",
+    },
+
+  "FLB_STR_MENU_HIDE_FEEDBACK" :
+    // Menu option to hide student feedback (hides the column)
+    { "en-us" : "Hide Student Feedback",
+     
+      "es-es" : "Ocultar Comentarios Para Los Alumnos",
+    },
+
+  "FLB_STR_MENU_EDIT_FEEDBACK" :
+    // Menu option to edit student feedback (unhides the column)
+    { "en-us" : "Edit Student Feedback",
+     
+      "es-es" : "Mostrar Comentarios Para Los Alumnos",
+    },
+  
+  "FLB_STR_MENU_HIDE_HELP_TIPS" :
+    // Menu option to hide help tips
+    { "en-us" : "Hide Help Tips",
+     
+      "es-es" : "Ocultar Ayuda Para Preguntas",
+    },
+
+  "FLB_STR_MENU_EDIT_HELP_TIPS" :
+    // Menu option to edit help tips
+    { "en-us" : "Edit Help Tips",
+     
+      "es-es" : "Mostrar Ayuda Para Preguntas",
+    },
+
+  "FLB_STR_MENU_VIEW_REPORT" :
+    // Menu option to view report.
+    { "en-us" : "View Report",
+     
+      "es-es" : "Ver Informe",
+    },
+  
+  "FLB_STR_MENU_ABOUT" :
+    // Menu option to learn About Flubaroo.
+    { "en-us" : "About Flubaroo",
+     
+      "es-es" : "Acerca de Flubaroo",
+    },
+
+  
+ "FLB_STR_MENU_SET_LANGUAGE" :
+    // Menu option to choose the language.
+    { "en-us" : "Set Language",
+     
+      "es-es" : "Seleccionar Idioma",
+    },
+
+  
+  "FLB_STR_BUTTON_CONTINUE" :
+    // Word that appears on the "Continue" button in grading and emailing grades.
+    { "en-us" : "Continue",
+     
+      "es-es" : "Continuar",
+    },
+
+  "FLB_STR_SHEETNAME_STUD_SUBM" :
+    // Name of "Student Submissions" sheet
+    { "en-us" : gbl_subm_sheet_name,     
+      "es-es" : "Respuestas",
+    },
+
+  "FLB_STR_SHEETNAME_GRADES" :
+    // Name of "Grades" sheet
+    { "en-us" : gbl_grades_sheet_name,
+     
+      "es-es" : "Calificaciones",
+    },
+
+  "FLB_STR_NOT_GRADED" :
+    // Text put in Grades sheet when a question isnt graded.
+    { "en-us" : "Not Graded",
+     
+      "es-es" : "No calificada",
+    },
+  
+  "FLB_STR_NEW_VERSION_NOTICE" :
+    // Message that is displayed when a new version of Flubaroo is installed.
+    { "en-us" : "You've installed a new version Flubaroo! Visit \
+                 flubaroo.com/blog to see what's new.",
+     
+      "es-es" : "¡Has instalado una nueva versión de Flubaroo! \
+                 Visita flubaroo.com/blog para ver las novedades.",
+    },
+  
+  "FLB_STR_NOTIFICATION" :
+    // Headline for notifications / alerts.
+    { "en-us" : "Flubaroo Notification",
+     
+      "es-es" : "Notificación de Flubaroo",
+    },  
+  
+  "FLB_STR_EMAIL_GRADES_IDENTIFY_EMAIL" :
+    // For emailing grades, question which asks user to identify email question.
+    { "en-us" : "Email Address Question: ", // note the space after ":"
+     
+      "es-es" : "Asunto del Email: ",
+    },  
+  
+  "FLB_STR_EMAIL_GRADES_QUESTIONS_AND_SCORES" :
+    // For emailing grades, asks user if list of questions and scores should be sent.
+    { "en-us" : "Include List of Questions and Scores: ", // note the space after ":"
+     
+      "es-es" : "Incluir la lista de preguntas y puntuaciones: ",
+    },  
+
+  "FLB_STR_EMAIL_GRADES_ANSWER_KEY" :
+    // For emailing grades, asks user if answer key should be sent..
+    { "en-us" : "Include Answer Key: ", // note the space after ":"
+     
+      "es-es" : "Incluir las claves de respuestas correctas: ",
+    },  
+
+  "FLB_STR_EMAIL_GRADES_INSTRUCTOR_MESSAGE" :
+    // For emailing grades, appears before text box for optional instructor message.
+    { "en-us" : "Message To Include in Email (optional):",
+     
+      "es-es" : "Mensaje para incluir en el correo electrónico (opcional):",
+    },
+
+
+  "FLB_STR_VIEW_REPORT_WINDOW_TITLE" :
+    // Window title for View Report window
+    { "en-us" : "Flubaroo - Grading Report",
+     
+      "es-es" : "Flubaroo - Informe de Calificaciones",
+    },
+  
+  "FLB_STR_VIEW_REPORT_HISTOGRAM_CHART_TITLE" :
+    // Title of historgram chart in report
+    { "en-us" : "Histogram of Grades",
+     
+      "es-es" : "Histograma de Calificaciones",
+    },  
+
+  "FLB_STR_VIEW_REPORT_HISTOGRAM_Y-AXIS_TITLE" :
+    // Y-Axis (vertical) title of historgram chart in report
+    { "en-us" : "Submissions",
+     
+      "es-es" : "Envíos",
+    },
+
+  "FLB_STR_VIEW_REPORT_HISTOGRAM_X-AXIS_TITLE" :
+    // X-Axis (horizontal) title of historgram chart in report
+    { "en-us" : "Points Scored",
+     
+      "es-es" : "Respuestas Correctas",
+    },
+
+  "FLB_STR_VIEW_REPORT_BUTTON_EMAIL_ME" :
+    // Label of "Email Me Report" button in View Report window
+    { "en-us" : "Email Me Report",
+     
+      "es-es" : "Enviarme el informe por correo",
+    },
+  
+  "FLB_STR_VIEW_REPORT_EMAIL_NOTIFICATION" :
+    // Notification that tells who the report was emailed to (example: "The report has been emailed to: bob@hi.com")
+    { "en-us" : "The report has been emailed to",
+     
+      "es-es" : "El informe ha sido enviado a",
+    },
+
+} // end langs
+

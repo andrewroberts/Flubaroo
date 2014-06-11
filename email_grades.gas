@@ -1,0 +1,522 @@
+// File: email_grades.gas
+// Description: 
+// This file contains all relevant functions for emailing students their grades.
+
+// emailGradesSetup: Displays the UI for the user to select emailing options.
+function emailGrades()
+ {
+   var ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+   var grades_sheet = getSheetWithGrades(ss);  
+   if (grades_sheet == null)
+     {
+       Browser.msgBox(langstr("FLB_STR_NOTIFICATION"),
+                      langstr("FLB_STR_CANNOT_FIND_GRADES_MSG") + langstr("FLB_STR_SHEETNAME_GRADES"),
+                      Browser.Buttons.OK);
+       return;
+     }
+ 
+   var app = createEmailGradesUI(ss);
+   ss.show(app);   
+ }
+ 
+function createEmailGradesUI(sheet)
+ {
+   customLogClear();
+   
+   var ss = SpreadsheetApp.getActiveSpreadsheet();
+   
+   var app = UiApp.createApplication().setTitle(langstr("FLB_STR_EMAIL_GRADES_WINDOW_TITLE"))
+                                      .setWidth("400").setHeight("520");
+ 
+   var gws = new GradesWorksheet(ss, INIT_TYPE_GRADED_META);
+
+   // Declare the handler that will be called when the 'Continue' or 'Cancel'
+   // buttons are clicked.
+   var handler = app.createServerClickHandler('emailGradesHandler');
+   var click_handler = app.createServerClickHandler('continueButtonClickHandler');
+   var show_questions_value_change_handler = app.createServerChangeHandler('showQuestionsValueChangeHandler');
+   
+   var email_addr = Session.getActiveUser().getEmail();
+   var email_addr_field = app.createHidden("email_addr", email_addr)
+                                .setId("email_addr").setName("email_addr");
+                              
+   var hidden_vars = app.createVerticalPanel().setVisible(false);
+   hidden_vars.add(email_addr_field);
+   handler.addCallbackElement(email_addr_field);
+ 
+    // create the main panel to hold all content in the UI for this step.
+   var main_panel = app.createVerticalPanel()
+                       .setStyleAttribute('border-spacing', '10px');
+         
+   // add a top level hpanel for instructions and picture
+   var hpanel = app.createHorizontalPanel()
+       .setStyleAttribute('border-spacing', '10px')
+       .add(app.createImage(FLUBAROO_WELCOME_IMG_URL))
+       .add(app.createLabel(langstr("FLB_STR_EMAIL_GRADES_INSTR"))
+            .setStyleAttribute('margin-top', '5px'));
+   main_panel.add(hpanel);
+ 
+   // create a pull-down box containing all the questions which identify a
+   // student. 
+   var lbox_name = "email_ques_index";
+   var lbox = app.createListBox(false).setId(lbox_name).setName(lbox_name);
+   var position = -1;
+   
+   var graded_subm = gws.getFirstGradedSubmission();
+   var qi = 0;
+   var position = -1;
+
+   for (var q = graded_subm.getFirstQuestion(); q != null; q = graded_subm.getNextQuestion(q))
+     {
+       var gopt = q.getGradingOption();
+       var ques_val = q.getFullQuestionText();
+     
+       if (gopt == GRADING_OPT_STUD_ID)
+         {
+           if (ques_val.length > 40)
+             {
+               ques_val = ques_val.substring(0, 35) + "..."; 
+             } 
+           
+           lbox.addItem(ques_val, String(qi));
+           position++;
+
+           if (quesContainsEmail(ques_val))
+             {       
+               lbox.setSelectedIndex(position); 
+             }
+         }
+       qi++;
+     }
+        
+   var hpanel2 = app.createHorizontalPanel()
+       .setStyleAttribute('border-spacing', '6px')
+       .add(app.createLabel(langstr("FLB_STR_EMAIL_GRADES_IDENTIFY_EMAIL")))
+       .add(lbox);
+   main_panel.add(hpanel2);
+   
+   var cbox_name = "show_questions";
+   var cbox = app.createCheckBox().setId(cbox_name).setName(cbox_name)
+                                  .setValue(true)
+                                  .addValueChangeHandler(show_questions_value_change_handler);
+   var hpanel3 = app.createHorizontalPanel()
+       .setStyleAttribute('border-spacing', '6px')
+       .add(app.createLabel(langstr("FLB_STR_EMAIL_GRADES_QUESTIONS_AND_SCORES")))
+       .add(cbox);
+   main_panel.add(hpanel3);
+ 
+   // depends on above being checked
+   var cbox2_name = "show_answers";
+   var cbox2 = app.createCheckBox().setId(cbox2_name).setName(cbox2_name);
+   var hpanel4 = app.createHorizontalPanel()
+       .setStyleAttribute('border-spacing', '6px')
+       .add(app.createLabel(langstr("FLB_STR_EMAIL_GRADES_ANSWER_KEY")))
+       .add(cbox2);
+   main_panel.add(hpanel4);
+ 
+   var textbox_name = "instructor_message";
+   var tbox = app.createTextArea().setId(textbox_name).setName(textbox_name)
+                                 .setWidth('350').setHeight('100');
+   var hpanel4 = app.createHorizontalPanel()
+       .setStyleAttribute('border-spacing', '6px')
+       .add(app.createLabel(langstr("FLB_STR_EMAIL_GRADES_INSTRUCTOR_MESSAGE")))
+   main_panel.add(hpanel4);
+   
+   var hpanel5 = app.createHorizontalPanel()
+       .setStyleAttribute('border-spacing', '6px')
+       .add(tbox);
+   main_panel.add(hpanel5);
+ 
+   // make selections available in handler.
+   handler.addCallbackElement(lbox);
+   handler.addCallbackElement(cbox);
+   handler.addCallbackElement(cbox2);
+   handler.addCallbackElement(tbox);
+ 
+   // add the Continue and Cancel buttons at the bottom.
+   var btnGrid = app.createGrid(1, 3).setStyleAttribute('float', 'right');
+   var btnSubmit = app.createButton(langstr("FLB_STR_BUTTON_CONTINUE"),handler).setId('CONTINUE')
+                                                       .addClickHandler(click_handler);
+ 
+   btnGrid.setWidget(0,1,btnSubmit);
+   //btnGrid.setWidget(0,2,app.createButton('Cancel',handler).setId('CANCEL'));
+   btnGrid.setWidget(0,0,app.createImage(FLUBAROO_WORKING_IMG_URL).setVisible(false).setId('working'));
+ 
+   main_panel.add(btnGrid);
+   
+   app.add(main_panel);
+   return app;
+ }
+   
+
+ 
+ function showQuestionsValueChangeHandler(e)
+ {
+   var app = UiApp.getActiveApplication();
+   
+   var sa_cbox = app.getElementById('show_answers');
+   var new_value = e.parameter.show_questions;
+   
+   if (new_value == 'true')
+     {
+       sa_cbox.setEnabled(true);
+     }
+   else
+     {
+       sa_cbox.setValue(false);
+       sa_cbox.setEnabled(false);
+     }
+
+   return app;
+ }
+
+ function emailGradesHandler(e)
+ {
+   var app = UiApp.getActiveApplication();
+   
+   var source = e.parameter.source;
+  
+   if (source == 'CANCEL')
+     {
+       app.close();
+       return app;
+     }
+   
+   var ss = SpreadsheetApp.getActiveSpreadsheet();
+   
+   var gws = new GradesWorksheet(ss, INIT_TYPE_GRADED_FULL);
+ 
+   var email_ques_index = e.parameter.email_ques_index;
+   var show_answers = e.parameter.show_answers;
+   var instructor_message = e.parameter.instructor_message;
+   var show_questions = e.parameter.show_questions;
+   
+   var user_email_addr = e.parameter.email_addr;
+   
+   var assignment_name = ss.getName();
+ 
+   // remove any HTML formatting from the instructor's message
+   instructor_message = instructor_message.replace("<", "&lt;");
+   instructor_message = instructor_message.replace(">", "&gt;");
+   instructor_message = instructor_message.replace("\n", "<br>");
+   
+   var msg_title = langstr("FLB_STR_EMAIL_GRADES_EMAIL_SUBJECT") + ' "' + assignment_name + '"';
+   var msg_body = "";
+                   
+   var num_emails_sent = 0;
+   var num_emails_unsent = 0;
+   
+   customLog("sending emails");
+   for (var graded_subm = gws.getFirstGradedSubmission(); graded_subm != null; 
+            graded_subm = gws.getNextGradedSubmission())
+     {
+       // pull the email address for this submission
+       var q = graded_subm.getQuestionByIndex(email_ques_index);
+       var email_address = q.getGradedVal(); // pull from Graded vals, incase teacher wants to edit.
+   
+       if (!isValidEmailAddress(email_address) || (graded_subm.getAlreadyEmailed() != ""))
+           {
+             num_emails_unsent += 1;
+             continue;
+           }
+       
+        msg_body = constructGradesEmailBody(assignment_name,
+                                            gws.getPointsPossible(),
+                                            show_questions,
+                                            show_answers,
+                                            instructor_message,
+                                            graded_subm); // grading options
+           
+       try
+         {
+           MailApp.sendEmail(email_address, msg_title, "",
+                             {htmlBody: msg_body, noReply: true, name: "Flubaroo Grader"});
+           num_emails_sent += 1;
+                  
+           graded_subm.recordEmailSentInGradesSheet();
+         }
+       catch (exception)
+          {
+           // just ignore malformed emails, or email errors.
+           num_emails_unsent += 1;
+          }
+     }
+   
+   app.close();
+   
+   if (num_emails_sent > 0)
+     {
+       // send the instructor a brief email, so they have a record of having emailed the grades
+       msg_title = langstr("FLB_STR_EMAIL_RECORD_EMAIL_SUBJECT") + ": " + assignment_name;
+       
+       msg_body = "<html><body><p>Below is a summary of the grades you just emailed:<b>";
+       msg_body += "<table border=0 cellspacing=12>";
+       msg_body += '<tr><td>' + langstr("FLB_STR_EMAIL_RECORD_ASSIGNMENT_NAME") + ':</td><td><b><a href="' + ss.getUrl() + '">' + assignment_name + "</a></b></td></tr>";
+       msg_body += "<tr><td>" + langstr("FLB_STR_EMAIL_RECORD_NUM_EMAILS_SENT") + ":</td><td><b>" + num_emails_sent + "</b></td></tr>";
+       msg_body += "<tr><td>" + langstr("FLB_STR_EMAIL_RECORD_NUM_GRADED_SUBM") + ":</td><td><b>" + gws.getNumGradedSubmissions() + "</b></td></tr>";
+       msg_body += "<tr><td>" + langstr("FLB_STR_EMAIL_RECORD_AVERAGE_SCORE") + ":</td><td><b>" + gws.getAverageScore() + "</b></td></tr>";
+       msg_body += "<tr><td>" + langstr("FLB_STR_EMAIL_RECORD_POINTS_POSSIBLE") + ":</td></td><b>" + gws.getPointsPossible() + "</b></td></tr>";
+       msg_body += "<tr><td>" + langstr("FLB_STR_EMAIL_RECORD_ANSWER_KEY_PROVIDED") + "</td><td><b>";
+       
+       if (show_answers == 'true')
+         {
+           msg_body += langstr("FLB_STR_EMAIL_RECORD_ANSWER_KEY_YES");
+         }
+       else
+         {
+           msg_body += langstr("FLB_STR_EMAIL_RECORD_ANSWER_KEY_NO");
+         }
+       msg_body += "</b></td></tr></table>";
+       
+       if (instructor_message != "")
+       {
+         msg_body += "<p>" + langstr("FLB_STR_EMAIL_RECORD_INSTRUCTOR_MESSAGE") + ":<br><br>";
+         msg_body += '<div style="padding-left:10px;padding-right:10px;padding-top:10px;padding-bottom:10px;width:60%;border:1px solid gray;">'; 
+         msg_body += instructor_message + "</p></div>";
+       }
+       msg_body += "</body></html>";
+        
+       try
+         {   
+           MailApp.sendEmail(user_email_addr, msg_title, "",
+                            {htmlBody: msg_body, noReply: true, name: "Flubaroo Grader"});
+         }
+       catch (exception)
+         {
+         }
+       
+       logEmail();
+       
+       var email_notification = num_emails_sent + " " + langstr("FLB_STR_VIEW_EMAIL_GRADES_NUMBER_SENT") + ". "; 
+       if (num_emails_unsent > 0) 
+         { 
+           email_notification += num_emails_unsent + " " + langstr("FLB_STR_VIEW_EMAIL_GRADES_NUMBER_UNSENT"); 
+         } 
+       Browser.msgBox(langstr("FLB_STR_NOTIFICATION"), email_notification, 
+                      Browser.Buttons.OK);   
+     }
+   else
+     {
+       Browser.msgBox(langstr("FLB_STR_NOTIFICATION"),
+                      langstr("FLB_STR_VIEW_EMAIL_GRADES_NO_EMAILS_SENT"),
+                      Browser.Buttons.OK);
+     }
+   
+   return app;
+ }
+   
+ function isValidEmailAddress(email_address)
+ {
+   if (typeof email_address != 'string')
+     {
+       email_address = email_address.toString();
+     }
+   
+   if (email_address.indexOf(' ') != -1)
+     {
+       // no spaces
+       return false;
+     }
+   if (email_address.indexOf('@') != -1)
+     {
+       // needs at '@'
+       return true;
+     }
+   
+   return false;
+ }
+   
+
+function constructGradesEmailBody(assignment_name,
+                                  points_possible,
+                                  show_questions,
+                                  show_answers,
+                                  instructor_message,
+                                  graded_subm)
+{   
+  // find out if any help tips were provided. if so, we'll want to include a column for them in the email.
+  var help_tips_provided = graded_subm.getHelpTipsPresent();
+  
+  var msg_body = '<html><body bgcolor="white">';
+   
+  msg_body += '<p>' + langstr("FLB_STR_EMAIL_GRADES_EMAIL_BODY_START") + ' <b>' + assignment_name + '</b>. '
+                    + langstr("FLB_STR_EMAIL_GRADES_DO_NOT_REPLY_MSG") + '.</p>';
+   
+  msg_body += '<div style="padding-left:10px;display:inline-block;border:1px solid black;">'; 
+  msg_body += "<h2>" + langstr("FLB_STR_EMAIL_GRADES_YOUR_GRADE") + ": <b>" + graded_subm.getScorePoints() + " / " + points_possible + "&nbsp;&nbsp;</h2></b></div>";
+
+  if (instructor_message != "")
+     {
+       msg_body += '<br><br>';
+       msg_body += langstr("FLB_STR_EMAIL_GRADES_INSTRUCTOR_MSG_BELOW") + ':<br><br>';
+       msg_body += '<div style="padding-left:10px;padding-right:10px;padding-top:10px;padding-bottom:10px;width:60%;border:1px solid gray;">';
+       msg_body +=  instructor_message;
+       msg_body += "</div>";
+     }
+  
+  if (graded_subm.getStudentFeedback() != "")
+    {
+       var student_feedback = graded_subm.getStudentFeedback();
+       student_feedback = student_feedback.replace("<", "&lt;");
+       student_feedback = student_feedback.replace(">", "&gt;");
+       student_feedback = student_feedback.replace("\n", "<br>");
+      
+       msg_body += '<br><br>';
+       msg_body += langstr("FLB_STR_EMAIL_GRADES_STUDENT_FEEDBACK_BELOW") + ':<br><br>';
+       msg_body += '<div style="padding-left:10px;padding-right:10px;padding-top:10px;padding-bottom:10px;width:60%;border:1px solid gray;">';
+       msg_body +=  student_feedback;
+       msg_body += "</div>";
+    }
+  
+  msg_body += "<br><p>" + langstr("FLB_STR_EMAIL_GRADES_SUBMISSION_SUMMARY") + ": ";
+  
+  msg_body += "<table border=0 cellspacing=12 width=80%>";
+  for (var q = graded_subm.getFirstQuestion(); q != null; q = graded_subm.getNextQuestion(q))
+    {
+      if (q.getGradingOption() == GRADING_OPT_STUD_ID)
+        {
+          msg_body += "<tr><td>"
+                      + q.getFullQuestionText() + "</td><td>"
+                      + "<b>" + q.getFullSubmissionText() + "</b></td></tr>";
+        }
+    }
+  
+  msg_body += "<tr><td>"
+               + langstr("FLB_STR_GRADE_STEP2_LABEL_SUBMISSION_TIME") + "</td><td>"
+               + "<b>" + graded_subm.getTimestamp() + "</b></td></tr>";
+  msg_body += "</table>";  
+  msg_body += "</p>"; 
+  
+  if (show_questions == 'true')
+    {
+
+      for (var q = graded_subm.getFirstQuestion(); q != null; q = graded_subm.getNextQuestion(q))
+        {
+          if (q.isTimestamp())
+            {
+              continue;
+            }
+          
+          var gopt = q.getGradingOption();
+          if (gopt == GRADING_OPT_STUD_ID)
+            {
+              continue;
+            }
+      
+          var grade_points_str = "";
+          var grade_status = "";
+      
+          if (gopt == GRADING_OPT_SKIP)
+            {
+              grade_status = langstr("FLB_STR_NOT_GRADED");
+              grade_points_str = "";
+            }
+          else
+            {
+              if (q.getGradedVal() > 0)
+                {
+                  grade_status = langstr("FLB_STR_EMAIL_GRADES_SCORE_TABLE_CORRECT");
+                }
+              else
+                {
+                  grade_status = langstr("FLB_STR_EMAIL_GRADES_SCORE_TABLE_INCORRECT");
+                }
+          
+              if (q.getGradedVal() > 0)
+                {
+                  grade_points_str = "+";
+                }
+              grade_points_str += q.getGradedVal().toString() + " ";
+              grade_points_str += langstr("FLB_STR_EMAIL_GRADES_SCORE_TABLE_POINTS");
+            } 
+      
+          msg_body += constructQuestionDiv(q, grade_status, grade_points_str, show_answers);
+        } 
+    }
+
+   msg_body += '<p><b>' + langstr("FLB_STR_EMAIL_GRADES_EMAIL_FOOTER") + '. ';
+   msg_body += '<a href="http://www.flubaroo.com">' + langstr("FLB_STR_EMAIL_GRADES_VISIT_FLUBAROO") + '</a>.</b></p>';
+   
+   msg_body += "</body></html>";
+   return msg_body;
+}
+
+function constructQuestionDiv(graded_ques, grade_status, grade_points_str, show_answers)
+{
+  var bgcolor_red = "#FF4F4F";
+  var bgcolor_green = "#44C93A";
+  var bgcolor_gray = "#c0c0c0";
+  
+  var gopt = graded_ques.getGradingOption();
+  if (gopt == GRADING_OPT_SKIP)
+    {
+      bgcolor = bgcolor_gray;
+    }
+  else if (graded_ques.getGradedVal() > 0)
+    {
+      bgcolor = bgcolor_green;
+    } 
+  else
+    {
+      bgcolor = bgcolor_red;
+    }
+  
+  div_body = '<div style="width:600px;margin-left:10px;padding-left:15px;padding-right:15px;padding-top:10px;padding-bottom:20px;\
+              -webkit-border-radius: 20px;-moz-border-radius: 20px;border-radius: 20px;\
+              -webkit-box-shadow: #B3B3B3 10px 10px 10px;-moz-box-shadow: #B3B3B3 10px 10px 10px; box-shadow: #B3B3B3 10px 10px 10px;'
+  div_body += 'background-color:' + bgcolor + ';">';
+  
+  div_body += '<span style="width:120px;float:right;padding-right:20px;">';
+  div_body += '<div style="width:100%;font-size:xx-large;">' + grade_status + '</div>';
+  div_body += '<div style="width:100%;padding-left:5px;">' + grade_points_str + '</div>';
+  div_body += '</span>';
+
+  div_body += '<p style="width:400px;font-size:large;">';
+  div_body += '<b>' + graded_ques.getFullQuestionText() + '</b>';
+  div_body += '</p>';
+  
+  div_body += '<p style="width:400px;font-size:medium;">';
+  div_body += '<b>' + langstr("FLB_STR_EMAIL_GRADES_SCORE_TABLE_YOUR_ANSWER_HEADER") + ': </b>' + graded_ques.getFullSubmissionText() + '</p>'; 
+ 
+  if ((grade_status == langstr("FLB_STR_EMAIL_GRADES_SCORE_TABLE_INCORRECT")) && (show_answers == 'true'))
+    {
+      div_body += '<p style="width:400px;font-size:medium;">'
+      div_body += '<b>' + langstr("FLB_STR_EMAIL_GRADES_SCORE_TABLE_CORRECT_ANSWER_HEADER") + ': </b>' + graded_ques.getAnswerKeyText();
+    }
+
+  if (graded_ques.getHelpTip() != "")
+    {
+      div_body += '<br><hr><b>' + langstr("FLB_STR_EMAIL_GRADES_SCORE_TABLE_HELP_TIP_HEADER")  + ':</b>';
+      div_body += '<p style="width:400px;padding-left:25px;padding-top:8px;font-size:medium;">'
+      div_body += '<i>' + graded_ques.getHelpTip() + '</i>';
+      div_body += '</p>';
+    }
+  
+  div_body += "</div><br><br>";
+  
+  return div_body;
+}
+
+function quesContainsEmail(ques_txt)
+{
+  ques_txt = ques_txt.toLowerCase();
+
+  if (ques_txt.indexOf('email') != -1)
+    {
+      return true;
+    }
+  
+  if (ques_txt.indexOf('e-mail') != -1)
+    {
+      return true;
+    }
+  
+  // spanish
+  if (ques_txt.indexOf('correo') != -1)
+    {
+      return true;
+    }
+  
+  return false;
+}

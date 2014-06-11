@@ -1,0 +1,46 @@
+// flubaroo.gas: Main script for Flubaroo Google Apps Script.
+// This script allows users to easily grade submissions made to spreadsheets via
+// via form against an answer key (which is also a submission). The grades
+// are calculated and placed in an adjacent worksheet.
+ 
+// Change Log:
+//   Version 1.0, 3/7/11: Initial release
+//   Version 1.1, 3/22/11: Fixed bug with emailing of grades
+//                         and added percent column.
+//   Version 1.2, 6/28/11: Fixed serverChangeHandler problem,
+//                         and whitespace problem.
+//   Version 1.3, 11/30/11: Added Google Analytics tracking
+//   Version 2.0, 1/17/12:  Major rewrite and feature additions. See blog
+//                         post (flubaroo.com/blog) for list of new features. Internally,
+//                         got rid of need for findPresentedQuestion
+//                         function by changing grading options row.
+//                         Added extra hidden rows to make 'Grades' self-contained.
+//                         Broke 'flubaroo.gas' into multiple files.
+//   Version 2.1, 11/29/12: Fixes for issues 8 and 9.
+
+/*   Version 3.0, 6/24/13:
+     Many changes in this version. The code has been compltely re-written from scratch
+     (an effort which started a year ago) to make it easier to modify and extend by myself
+     and others. Also:
+      
+      Bug / Issue fixes:
+      - Fix for recent bug in which Flubaroo runs forever (sheet reference issue)
+      - Issue 1 resolved
+      
+      New Features:
+      - Flubaroo won't re-email students who have already been emailed (Issue 2).
+      - Flubaroo can now send an optional help tip per question to students in the email (Issue 3).
+      - Flubaroo can now send individualized feedback to each student in the email.
+      - Flubaroo now supports Spanish!!! (Issue 4). Special thanks to these people who collaboratively 
+        translated Flubaroo into Spanish in record time:
+
+           ** Felipe Calvo **
+           ** Gabriel Crivelli **
+           ** Luis Escolar **
+           ** Iñaki Fernández **
+           ** Manuel Fernández **
+           ** Gatech López **
+*/                
+
+//   Version 3.01, 6/26/13: Quick fix for answer key issue reported (issue 37).
+//   Version 3.02, 11/1/13: Fix for issues 39, 65, and 66. 
